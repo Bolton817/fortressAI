@@ -1,5 +1,6 @@
 import { SiteConfiguration } from "@/core/schema/site-config";
 import { tenantRepository } from "./tenant-repository";
+import { composeWebsite } from "@/composition/composer";
 
 /**
  * Fortress AI — Synthetic Seed Data for Phase 0 (TDD §33.1, §36)
@@ -338,8 +339,11 @@ export const nairobiAdvisoryConfig: SiteConfiguration = {
   ],
 };
 
+export const USER_C_ID = "usr_tenant_c_composed";
+export const SITE_C_ID = "c1a2b3c4-1111-4111-a111-999999999999";
+
 /**
- * Initializes the repository with both sample tenants for Phase 0 proof
+ * Initializes the repository with sample tenants for Phase 0 and Phase 1 proof
  */
 export function seedPhase0Tenants(): void {
   // Tenant A: Mara Horizon Expeditions
@@ -367,4 +371,46 @@ export function seedPhase0Tenants(): void {
     },
     nairobiAdvisoryConfig
   );
+
+  // Tenant C: Serengeti Echoes (Phase 1 5-Page Composed Site)
+  // Dynamically composed via composeWebsite with verified facts
+  const serengetiEchoesConfig = composeWebsite(
+    SITE_C_ID,
+    "serengeti-echoes",
+    {
+      name: "Serengeti Echoes Safaris",
+      industry: "Tourism & Safari",
+      summary: "Mindful wildlife journeys across the Great Rift Valley and Mara ecosystem.",
+      location: "Nairobi & Narok, Kenya",
+      email: "safari@serengetiechoes.co.ke",
+      phone: "+254711999888",
+      whatsapp: "+254711999888",
+      verifiedTestimonials: [
+        {
+          quote: "An extraordinary journey. Their deep respect for wildlife and local Maasai guides made this unforgettable.",
+          authorName: "Sarah Jenkins",
+          authorTitle: "Conservation Photographer",
+        },
+      ],
+      verifiedMetrics: [
+        { value: "100%", label: "Locally Guided", context: "100% indigenous Maasai field guides" },
+        { value: "14+", label: "Years in Field", context: "Continuous conservation tracking" },
+        { value: "0", label: "Single-Use Plastics", context: "Certified zero-waste camp operations" },
+      ],
+    },
+    "seed_serengeti_demo"
+  );
+
+  tenantRepository.seedSite(
+    USER_C_ID,
+    {
+      id: SITE_C_ID,
+      ownerUserId: USER_C_ID,
+      name: "Serengeti Echoes Safaris",
+      platformSlug: "serengeti-echoes",
+      lifecycleStatus: "draft",
+    },
+    serengetiEchoesConfig
+  );
 }
+

@@ -14,9 +14,14 @@ export async function GET(request: Request, { params }: RouteParams) {
   const { siteId } = await params;
 
   try {
-    const site = await tenantRepository.getSite({ userId: USER_A_ID }, siteId).catch(async () => {
-      return await tenantRepository.getSite({ userId: USER_B_ID }, siteId);
-    });
+    const site = await tenantRepository
+      .getSite({ userId: USER_A_ID }, siteId)
+      .catch(async () => {
+        return await tenantRepository.getSite({ userId: USER_B_ID }, siteId);
+      })
+      .catch(async () => {
+        return await tenantRepository.getSite({ userId: "usr_tenant_c_composed" }, siteId);
+      });
 
     const config = await tenantRepository.getDraftConfiguration({ userId: site.ownerUserId }, siteId);
     const exportResult = compileSiteToStatic(config);

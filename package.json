@@ -8,7 +8,8 @@
     "start": "next start",
     "test": "vitest run",
     "lint": "eslint",
-    "verify:phase0": "tsx scripts/verify-phase-0.ts"
+    "verify:phase0": "tsx scripts/verify-phase-0.ts",
+    "verify:phase1": "tsx scripts/verify-phase-1.ts"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",
