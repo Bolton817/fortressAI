@@ -2,15 +2,15 @@ import { ComponentType } from "react";
 import { SectionManifest } from "@/core/schema/manifest";
 import { AssetBinding } from "@/core/schema/site-config";
 
-export interface SectionComponentProps<TContent = Record<string, any>> {
+export interface SectionComponentProps<TContent = Record<string, unknown>> {
   instanceId: string;
   content: TContent;
   assetBindings: AssetBinding[];
   animationPreset?: string;
-  settings?: Record<string, any>;
+  settings?: Record<string, unknown>;
 }
 
 export interface SectionRegistryEntry {
   manifest: SectionManifest;
-  component: ComponentType<SectionComponentProps<any>>;
+  component: ComponentType<SectionComponentProps<Record<string, unknown>>>;
 }

@@ -14,7 +14,6 @@ export async function GET(request: Request, { params }: RouteParams) {
   const { siteId } = await params;
 
   try {
-    // Determine tenant context
     const site = await tenantRepository.getSite({ userId: USER_A_ID }, siteId).catch(async () => {
       return await tenantRepository.getSite({ userId: USER_B_ID }, siteId);
     });
@@ -26,12 +25,13 @@ export async function GET(request: Request, { params }: RouteParams) {
       success: true,
       export: exportResult,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Unknown export error";
     return NextResponse.json(
       {
         error: {
           code: "EXPORT_FAILED",
-          message: err.message,
+          message,
           retryable: false,
           requestId: `req_${Date.now()}`,
         },

@@ -5,11 +5,10 @@ import {
   USER_B_ID,
   SITE_B_ID,
   maraHorizonConfig,
-  nairobiAdvisoryConfig,
   seedPhase0Tenants,
 } from "@/db/seed-data";
 import { tenantRepository } from "@/db/tenant-repository";
-import { TenantAccessDeniedError, ResourceNotFoundError } from "@/core/errors";
+import { TenantAccessDeniedError } from "@/core/errors";
 import { SiteConfigurationSchema } from "@/core/schema/site-config";
 import { sectionRegistry } from "@/registry";
 import { compileSiteToStatic } from "@/exporter/static-compiler";
