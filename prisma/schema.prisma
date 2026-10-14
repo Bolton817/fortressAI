@@ -1,0 +1,164 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id               String           @id @default(uuid())
+  emailNormalised  String           @unique @map("email_normalised")
+  displayName      String           @map("display_name")
+  phoneOptional    String?          @map("phone_optional")
+  emailVerifiedAt  DateTime?        @map("email_verified_at")
+  status           String           @default("active")
+  timezone         String           @default("UTC")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  memberships      SiteMembership[]
+
+  @@map("users")
+}
+
+model Site {
+  id                    String           @id @default(uuid())
+  ownerUserId           String           @map("owner_user_id")
+  name                  String
+  platformSlug          String           @unique @map("platform_slug")
+  lifecycleStatus       String           @default("draft") @map("lifecycle_status")
+  currentDraftRevisionId String?         @map("current_draft_revision_id")
+  publishedReleaseId    String?          @map("published_release_id")
+  createdAt             DateTime         @default(now()) @map("created_at")
+  updatedAt             DateTime         @updatedAt @map("updated_at")
+
+  memberships           SiteMembership[]
+  businessProfile       BusinessProfile?
+  revisions             SiteRevision[]
+  pages                 Page[]
+  assetBindings         AssetBinding[]
+
+  @@index([ownerUserId])
+  @@map("sites")
+}
+
+model SiteMembership {
+  id        String   @id @default(uuid())
+  siteId    String   @map("site_id")
+  userId    String   @map("user_id")
+  role      String   @default("owner") // "owner", "admin", "member"
+  createdAt DateTime @default(now()) @map("created_at")
+
+  site      Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([siteId, userId])
+  @@index([userId])
+  @@map("site_memberships")
+}
+
+model BusinessProfile {
+  id              String   @id @default(uuid())
+  siteId          String   @unique @map("site_id")
+  factsJson       Json     @map("facts_json")
+  sourceMapJson   Json?    @map("source_map_json")
+  locale          String   @default("en")
+  marketContext   String?  @map("market_context")
+  lastConfirmedAt DateTime? @map("last_confirmed_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  site            Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@map("business_profiles")
+}
+
+model SiteRevision {
+  id          String   @id @default(uuid())
+  siteId      String   @map("site_id")
+  version     Int
+  configJson  Json     @map("config_json")
+  createdBy   String   @map("created_by")
+  reason      String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  site        Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@unique([siteId, version])
+  @@index([siteId])
+  @@map("site_revisions")
+}
+
+model Page {
+  id                      String                @id @default(uuid())
+  siteId                  String                @map("site_id")
+  slug                    String
+  pageType                String                @map("page_type")
+  title                   String
+  sortOrder               Int                   @default(0) @map("sort_order")
+  currentContentRevisionId String?              @map("current_content_revision_id")
+  createdAt               DateTime              @default(now()) @map("created_at")
+  updatedAt               DateTime              @updatedAt @map("updated_at")
+
+  site                    Site                  @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  contentRevisions        PageContentRevision[]
+
+  @@unique([siteId, slug])
+  @@index([siteId])
+  @@map("pages")
+}
+
+model PageContentRevision {
+  id            String   @id @default(uuid())
+  pageId        String   @map("page_id")
+  revision      Int
+  contentJson   Json     @map("content_json")
+  schemaVersion String   @map("schema_version")
+  sourceJobId   String?  @map("source_job_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  page          Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@unique([pageId, revision])
+  @@index([pageId])
+  @@map("page_content_revisions")
+}
+
+model Asset {
+  id                 String         @id @default(uuid())
+  cloudinaryPublicId String         @unique @map("cloudinary_public_id")
+  status             String         @default("approved") // draft, review, approved, expired
+  sourceProvider     String?        @map("source_provider")
+  licenceType        String         @default("approved-curated") @map("licence_type")
+  licenceExpiryAt    DateTime?      @map("licence_expiry_at")
+  attributionText    String?        @map("attribution_text")
+  aspectRatio        String         @map("aspect_ratio")
+  width              Int?
+  height             Int?
+  altTextDefault     String         @map("alt_text_default")
+  tagsJson           Json           @map("tags_json")
+  createdAt          DateTime       @default(now()) @map("created_at")
+
+  bindings           AssetBinding[]
+
+  @@map("assets")
+}
+
+model AssetBinding {
+  id                String   @id @default(uuid())
+  siteId            String   @map("site_id")
+  sectionInstanceId String   @map("section_instance_id")
+  slotId            String   @map("slot_id")
+  assetId           String   @map("asset_id")
+  role              String   @default("content")
+  selectedAt        DateTime @default(now()) @map("selected_at")
+
+  site              Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  asset             Asset    @relation(fields: [assetId], references: [id], onDelete: Restrict)
+
+  @@index([siteId])
+  @@index([assetId])
+  @@map("asset_bindings")
+}
