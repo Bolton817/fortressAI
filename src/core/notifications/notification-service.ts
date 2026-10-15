@@ -106,6 +106,57 @@ export class NotificationService {
       targetRoute: data.publishedUrl,
     });
   }
+
+  public notifyDomainRegistered(data: {
+    userId: string;
+    siteId: string;
+    domain: string;
+    receiptId: string;
+  }): NotificationRecord {
+    return notificationRepository.createNotification({
+      userId: data.userId,
+      siteId: data.siteId,
+      idempotencyKey: `domain_reg_${data.domain}_${data.receiptId}`,
+      type: "SYSTEM_UPDATE",
+      title: `Domain Registered: ${data.domain}`,
+      body: `Your domain ${data.domain} has been successfully registered. Complete the DNS challenge to activate live traffic.`,
+      targetRoute: `/dashboard/websites/${data.siteId}`,
+    });
+  }
+
+  public notifyDomainRenewalDue(data: {
+    userId: string;
+    siteId: string;
+    domain: string;
+    daysRemaining: number;
+    expiresAt: string;
+  }): NotificationRecord {
+    return notificationRepository.createNotification({
+      userId: data.userId,
+      siteId: data.siteId,
+      idempotencyKey: `domain_renewal_${data.domain}_${data.daysRemaining}d`,
+      type: "SECURITY_ALERT",
+      title: `Domain Renewal Due: ${data.domain}`,
+      body: `Your domain ${data.domain} expires in ${data.daysRemaining} days (on ${new Date(data.expiresAt).toLocaleDateString()}). Please verify renewal payment to ensure uninterrupted site access.`,
+      targetRoute: `/dashboard/websites/${data.siteId}`,
+    });
+  }
+
+  public notifyDomainTransferred(data: {
+    userId: string;
+    siteId: string;
+    domain: string;
+  }): NotificationRecord {
+    return notificationRepository.createNotification({
+      userId: data.userId,
+      siteId: data.siteId,
+      idempotencyKey: `domain_transfer_${data.domain}_${Date.now()}`,
+      type: "SYSTEM_UPDATE",
+      title: `Domain Transfer Initiated: ${data.domain}`,
+      body: `Domain transfer authorization code for ${data.domain} has been issued and domain lock unlocked.`,
+      targetRoute: `/dashboard/websites/${data.siteId}`,
+    });
+  }
 }
 
 export const notificationService = new NotificationService();

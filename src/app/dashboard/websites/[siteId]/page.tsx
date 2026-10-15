@@ -4,7 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { getCurrentUser } from "@/core/auth/auth-guard";
 import { tenantRepository } from "@/db/tenant-repository";
-import { SitePublishPanel } from "@/components/dashboard/site-publish-panel";
+import { SiteManagementTabs } from "@/components/dashboard/site-management-tabs";
 import { ArrowLeft, Sparkles } from "lucide-react";
 
 interface SiteManagePageProps {
@@ -54,8 +54,8 @@ export default async function SiteManagePage({ params }: SiteManagePageProps) {
         </Link>
       </div>
 
-      {/* Main Publish & Rollback Management Panel */}
-      <SitePublishPanel
+      {/* Main Management Tabs (Publish & Domains) */}
+      <SiteManagementTabs
         siteId={site.id}
         siteName={site.name}
         platformSlug={site.platformSlug}

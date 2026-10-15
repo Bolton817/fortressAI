@@ -4,8 +4,16 @@ import { randomUUID, randomBytes } from "node:crypto";
 import { tenantRepository } from "./tenant-repository";
 
 /**
- * Fortress AI — Domain & Subdomain Mapping Repository (TDD §7.1, §20, FR-060, FR-061)
+ * Fortress AI — Domain & Subdomain Mapping Repository (TDD §7.1, §20, §22, FR-060, FR-061, FR-064, FR-066)
  */
+
+export interface DnsInstructionRecord {
+  type: "TXT" | "CNAME" | "A" | "ALIAS";
+  name: string;
+  value: string;
+  ttl: number;
+  purpose: "ownership_verification" | "traffic_routing" | "apex_fallback";
+}
 
 export interface StoredDomainMapping {
   id: string;
@@ -16,6 +24,15 @@ export interface StoredDomainMapping {
   verificationStatus: "pending" | "verified" | "failed";
   sslStatus: "pending" | "active" | "error";
   isPrimary: boolean;
+  challengeType?: "txt" | "cname";
+  challengeHost?: string;
+  challengeValue?: string;
+  challengeExpiresAt?: string;
+  lastDnsCheckAt?: string;
+  lastTlsCheckAt?: string;
+  dnsInstructions?: DnsInstructionRecord[];
+  eppAuthCode?: string;
+  isLocked: boolean;
   verifiedAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -23,6 +40,7 @@ export interface StoredDomainMapping {
 
 export class DomainRepository {
   private domains: Map<string, StoredDomainMapping> = new Map(); // hostname -> StoredDomainMapping
+  private idIndex: Map<string, string> = new Map(); // id -> hostname
   private siteDomains: Map<string, Set<string>> = new Map(); // siteId -> Set<hostname>
 
   private getDomainsDir(): string {
@@ -45,6 +63,7 @@ export class DomainRepository {
           const mapping = JSON.parse(raw) as StoredDomainMapping;
           if (mapping && mapping.hostname) {
             this.domains.set(mapping.hostname, mapping);
+            this.idIndex.set(mapping.id, mapping.hostname);
             if (!this.siteDomains.has(mapping.siteId)) {
               this.siteDomains.set(mapping.siteId, new Set());
             }
@@ -100,6 +119,38 @@ export class DomainRepository {
 
     const verificationToken = randomBytes(16).toString("hex");
     const isAutoVerified = domainType === "platform_subdomain";
+    const now = new Date().toISOString();
+    const expiry = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(); // 72 hour challenge window
+
+    const challengeHost = `_fortress-challenge.${hostname}`;
+    const challengeValue = `fortress-verification=${verificationToken}`;
+
+    const defaultInstructions: DnsInstructionRecord[] = isAutoVerified
+      ? []
+      : [
+          {
+            type: "TXT",
+            name: challengeHost,
+            value: challengeValue,
+            ttl: 300,
+            purpose: "ownership_verification",
+          },
+          domainType === "custom_apex"
+            ? {
+                type: "A",
+                name: "@",
+                value: "76.76.21.21", // Platform edge Anycast IP
+                ttl: 300,
+                purpose: "traffic_routing",
+              }
+            : {
+                type: "CNAME",
+                name: hostname.split(".")[0] || "www",
+                value: "proxy.fortress.local",
+                ttl: 300,
+                purpose: "traffic_routing",
+              },
+        ];
 
     const mapping: StoredDomainMapping = {
       id: randomUUID(),
@@ -110,12 +161,19 @@ export class DomainRepository {
       verificationStatus: isAutoVerified ? "verified" : "pending",
       sslStatus: isAutoVerified ? "active" : "pending",
       isPrimary,
-      verifiedAt: isAutoVerified ? new Date().toISOString() : undefined,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      challengeType: "txt",
+      challengeHost: isAutoVerified ? undefined : challengeHost,
+      challengeValue: isAutoVerified ? undefined : challengeValue,
+      challengeExpiresAt: isAutoVerified ? undefined : expiry,
+      dnsInstructions: defaultInstructions,
+      isLocked: true,
+      verifiedAt: isAutoVerified ? now : undefined,
+      createdAt: now,
+      updatedAt: now,
     };
 
     this.domains.set(hostname, mapping);
+    this.idIndex.set(mapping.id, hostname);
     if (!this.siteDomains.has(siteId)) {
       this.siteDomains.set(siteId, new Set());
     }
@@ -135,6 +193,15 @@ export class DomainRepository {
   }
 
   /**
+   * Get domain mapping by ID
+   */
+  public getDomainById(id: string): StoredDomainMapping | null {
+    const hostname = this.idIndex.get(id);
+    if (!hostname) return null;
+    return this.getDomain(hostname);
+  }
+
+  /**
    * List all domains registered for a site
    */
   public listDomainsForSite(siteId: string): StoredDomainMapping[] {
@@ -147,6 +214,119 @@ export class DomainRepository {
       if (mapping) list.push({ ...mapping });
     }
     return list;
+  }
+
+  /**
+   * Set custom challenge details on a domain mapping
+   */
+  public setChallenge(
+    rawHostname: string,
+    challenge: {
+      type: "txt" | "cname";
+      host: string;
+      value: string;
+      expiresAt: string;
+      instructions?: DnsInstructionRecord[];
+    }
+  ): StoredDomainMapping {
+    const hostname = this.normaliseHostname(rawHostname);
+    const mapping = this.domains.get(hostname);
+    if (!mapping) {
+      throw new Error(`Domain "${hostname}" not found.`);
+    }
+
+    mapping.challengeType = challenge.type;
+    mapping.challengeHost = challenge.host;
+    mapping.challengeValue = challenge.value;
+    mapping.challengeExpiresAt = challenge.expiresAt;
+    if (challenge.instructions) {
+      mapping.dnsInstructions = challenge.instructions;
+    }
+    mapping.updatedAt = new Date().toISOString();
+
+    this.persistMappingToDisk(mapping);
+    return { ...mapping };
+  }
+
+  /**
+   * Update DNS verification status
+   */
+  public updateDnsStatus(
+    rawHostname: string,
+    status: "pending" | "verified" | "failed",
+    checkTime?: string
+  ): StoredDomainMapping {
+    const hostname = this.normaliseHostname(rawHostname);
+    const mapping = this.domains.get(hostname);
+    if (!mapping) {
+      throw new Error(`Domain "${hostname}" not found.`);
+    }
+
+    const now = checkTime || new Date().toISOString();
+    mapping.verificationStatus = status;
+    mapping.lastDnsCheckAt = now;
+    if (status === "verified" && !mapping.verifiedAt) {
+      mapping.verifiedAt = now;
+    }
+    mapping.updatedAt = now;
+
+    this.persistMappingToDisk(mapping);
+    return { ...mapping };
+  }
+
+  /**
+   * Update TLS certificate status
+   */
+  public updateTlsStatus(
+    rawHostname: string,
+    status: "pending" | "active" | "error",
+    checkTime?: string
+  ): StoredDomainMapping {
+    const hostname = this.normaliseHostname(rawHostname);
+    const mapping = this.domains.get(hostname);
+    if (!mapping) {
+      throw new Error(`Domain "${hostname}" not found.`);
+    }
+
+    const now = checkTime || new Date().toISOString();
+    mapping.sslStatus = status;
+    mapping.lastTlsCheckAt = now;
+    mapping.updatedAt = now;
+
+    this.persistMappingToDisk(mapping);
+    return { ...mapping };
+  }
+
+  /**
+   * Toggle domain lock (transfer lock)
+   */
+  public setLockStatus(rawHostname: string, isLocked: boolean): StoredDomainMapping {
+    const hostname = this.normaliseHostname(rawHostname);
+    const mapping = this.domains.get(hostname);
+    if (!mapping) {
+      throw new Error(`Domain "${hostname}" not found.`);
+    }
+
+    mapping.isLocked = isLocked;
+    mapping.updatedAt = new Date().toISOString();
+    this.persistMappingToDisk(mapping);
+    return { ...mapping };
+  }
+
+  /**
+   * Set EPP transfer authorization code
+   */
+  public setEppAuthCode(rawHostname: string, code: string): StoredDomainMapping {
+    const hostname = this.normaliseHostname(rawHostname);
+    const mapping = this.domains.get(hostname);
+    if (!mapping) {
+      throw new Error(`Domain "${hostname}" not found.`);
+    }
+
+    mapping.eppAuthCode = code;
+    mapping.updatedAt = new Date().toISOString();
+    this.persistMappingToDisk(mapping);
+    return { ...mapping };
   }
 
   /**
@@ -207,6 +387,7 @@ export class DomainRepository {
     const mapping = this.domains.get(hostname);
     if (mapping) {
       this.domains.delete(hostname);
+      this.idIndex.delete(mapping.id);
       this.siteDomains.get(mapping.siteId)?.delete(hostname);
 
       try {
@@ -222,7 +403,14 @@ export class DomainRepository {
    */
   public clearAll(): void {
     this.domains.clear();
+    this.idIndex.clear();
     this.siteDomains.clear();
+    try {
+      const dir = this.getDomainsDir();
+      if (fs.existsSync(dir)) {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    } catch {}
   }
 }
 

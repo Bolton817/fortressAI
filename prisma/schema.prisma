@@ -26,6 +26,7 @@ model User {
   sessions         Session[]
   notifications    Notification[]
   auditEvents      AuditEvent[]
+  domainOrders     DomainOrder[]
 
   @@map("users")
 }
@@ -94,6 +95,7 @@ model Site {
   notifications         Notification[]
   releases              Release[]
   domains               DomainMapping[]
+  domainOrders          DomainOrder[]
 
   @@index([ownerUserId])
   @@map("sites")
@@ -286,6 +288,15 @@ model DomainMapping {
   verificationStatus String    @default("pending") @map("verification_status") // pending, verified, failed
   sslStatus          String    @default("pending") @map("ssl_status") // pending, active, error
   isPrimary          Boolean   @default(false) @map("is_primary")
+  challengeType      String?   @default("txt") @map("challenge_type") // txt, cname
+  challengeHost      String?   @map("challenge_host")
+  challengeValue     String?   @map("challenge_value")
+  challengeExpiresAt DateTime? @map("challenge_expires_at")
+  lastDnsCheckAt     DateTime? @map("last_dns_check_at")
+  lastTlsCheckAt     DateTime? @map("last_tls_check_at")
+  dnsInstructions    Json?     @map("dns_instructions")
+  eppAuthCode        String?   @map("epp_auth_code")
+  isLocked           Boolean   @default(true) @map("is_locked")
   verifiedAt         DateTime? @map("verified_at")
   createdAt          DateTime  @default(now()) @map("created_at")
   updatedAt          DateTime  @updatedAt @map("updated_at")
@@ -294,4 +305,32 @@ model DomainMapping {
 
   @@index([siteId])
   @@map("domain_mappings")
+}
+
+model DomainOrder {
+  id                  String    @id @default(uuid())
+  siteId              String    @map("site_id")
+  userId              String    @map("user_id")
+  domainName          String    @map("domain_name")
+  tld                 String
+  termYears           Int       @default(1) @map("term_years")
+  priceCents          Int       @map("price_cents")
+  currency            String    @default("USD")
+  renewalPriceCents   Int       @map("renewal_price_cents")
+  idempotencyKey      String    @unique @map("idempotency_key")
+  orderStatus         String    @default("pending") @map("order_status") // pending, completed, failed, refunded
+  providerOrderId     String?   @map("provider_order_id")
+  registrantJson      Json      @map("registrant_json")
+  receiptJson         Json?     @map("receipt_json")
+  expiresAt           DateTime? @map("expires_at")
+  autoRenew           Boolean   @default(true) @map("auto_renew")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  site                Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([siteId])
+  @@index([userId])
+  @@map("domain_orders")
 }

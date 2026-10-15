@@ -6,6 +6,8 @@ import type { NextRequest } from "next/server";
  * Resolves platform subdomains and custom domains, rewriting to /site/[siteSlug]/...
  */
 
+import { domainRepository } from "@/db/domain-repository";
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -30,19 +32,13 @@ export function proxy(request: NextRequest) {
   // 2. Normalise host header
   const host = (request.headers.get("host") || "").toLowerCase().split(":")[0];
 
-  // 3. Check for platform subdomain (e.g., mara-safaris.localhost, mara-safaris.fortressai.app)
-  const hostParts = host.split(".");
-  if (hostParts.length >= 2) {
-    const candidateSubdomain = hostParts[0];
-    const reservedSubdomains = ["www", "app", "api", "admin", "dashboard", "preview", "status"];
-
-    if (!reservedSubdomains.includes(candidateSubdomain)) {
-      // Subdomain detected! Rewrite internally to /site/[candidateSubdomain]/[pathname]
-      const url = request.nextUrl.clone();
-      const targetPath = pathname === "/" ? "" : pathname;
-      url.pathname = `/site/${candidateSubdomain}${targetPath}`;
-      return NextResponse.rewrite(url);
-    }
+  // 3. Resolve site from domainRepository (direct custom domain or platform subdomain)
+  const resolved = domainRepository.resolveSiteIdFromHostname(host);
+  if (resolved) {
+    const url = request.nextUrl.clone();
+    const targetPath = pathname === "/" ? "" : pathname;
+    url.pathname = `/site/${resolved.slug}${targetPath}`;
+    return NextResponse.rewrite(url);
   }
 
   return NextResponse.next();

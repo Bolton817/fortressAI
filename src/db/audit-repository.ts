@@ -5,7 +5,7 @@ export interface AuditEventRecord {
   id: string;
   actorUserId?: string | null;
   action: string;
-  targetType: "user" | "site" | "session" | "notification" | "security";
+  targetType: "user" | "site" | "session" | "notification" | "security" | "domain";
   targetId: string;
   metadataJson?: Record<string, any>;
   metadata?: Record<string, any>;
@@ -53,10 +53,23 @@ export class AuditRepository {
     }
   }
 
+  public recordEvent(data: {
+    actorUserId?: string | null;
+    action: string;
+    targetType: "user" | "site" | "session" | "notification" | "security" | "domain";
+    targetId: string;
+    metadataJson?: Record<string, any>;
+    metadata?: Record<string, any>;
+    ipAddress?: string | null;
+    userAgent?: string | null;
+  }): AuditEventRecord {
+    return this.record(data);
+  }
+
   public record(data: {
     actorUserId?: string | null;
     action: string;
-    targetType: "user" | "site" | "session" | "notification" | "security";
+    targetType: "user" | "site" | "session" | "notification" | "security" | "domain";
     targetId: string;
     metadataJson?: Record<string, any>;
     metadata?: Record<string, any>;
