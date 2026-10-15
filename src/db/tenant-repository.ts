@@ -31,10 +31,60 @@ export interface StoredSiteRevision {
   createdAt: Date;
 }
 
+import * as fs from "node:fs";
+import * as path from "node:path";
+
+function getSiteFilePath(siteId: string): string {
+  const dir = path.join(process.cwd(), ".data", "sites");
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  return path.join(dir, `${siteId}.json`);
+}
+
 export class TenantRepository {
   private sites: Map<string, StoredSite> = new Map();
   private memberships: Map<string, Set<string>> = new Map(); // siteId -> Set<userId>
   private revisions: Map<string, StoredSiteRevision[]> = new Map(); // siteId -> StoredSiteRevision[]
+
+  private persistSiteToFile(siteId: string): void {
+    try {
+      const site = this.sites.get(siteId);
+      const members = this.memberships.get(siteId);
+      const revs = this.revisions.get(siteId);
+      if (site && members && revs) {
+        const filePath = getSiteFilePath(siteId);
+        fs.writeFileSync(
+          filePath,
+          JSON.stringify({
+            site,
+            members: Array.from(members),
+            revisions: revs,
+          }),
+          "utf-8"
+        );
+      }
+    } catch {
+      // Ignore filesystem sync errors in constrained environments
+    }
+  }
+
+  private loadSiteFromFile(siteId: string): boolean {
+    try {
+      const filePath = getSiteFilePath(siteId);
+      if (fs.existsSync(filePath)) {
+        const raw = fs.readFileSync(filePath, "utf-8");
+        const parsed = JSON.parse(raw);
+        this.sites.set(siteId, parsed.site);
+        this.memberships.set(siteId, new Set(parsed.members));
+        this.revisions.set(siteId, parsed.revisions);
+        return true;
+      }
+    } catch {
+      // Ignore file reading errors
+    }
+    return false;
+  }
 
   /**
    * Helper to seed a site with owner membership and an initial canonical revision
@@ -62,12 +112,16 @@ export class TenantRepository {
     };
     this.revisions.set(site.id, [initialRevision]);
     site.currentDraftRevisionId = initialRevision.id;
+    this.persistSiteToFile(site.id);
   }
 
   /**
    * Verifies that the tenant in context has valid membership for the site (TDD §7.2)
    */
   private verifyAccess(ctx: TenantContext, siteId: string): void {
+    if (!this.sites.has(siteId)) {
+      this.loadSiteFromFile(siteId);
+    }
     const site = this.sites.get(siteId);
     if (!site) {
       throw new ResourceNotFoundError("Site", siteId);
@@ -98,6 +152,24 @@ export class TenantRepository {
     }
     const latest = siteRevs[siteRevs.length - 1];
     return latest.config;
+  }
+
+  /**
+   * Resolve draft configuration for preview route (TDD §20.3)
+   */
+  async getPreviewConfiguration(siteId: string): Promise<SiteConfiguration> {
+    if (!this.sites.has(siteId)) {
+      this.loadSiteFromFile(siteId);
+    }
+    const site = this.sites.get(siteId);
+    if (!site) {
+      throw new ResourceNotFoundError("Site", siteId);
+    }
+    const siteRevs = this.revisions.get(siteId);
+    if (!siteRevs || siteRevs.length === 0) {
+      throw new ResourceNotFoundError("SiteRevision", `preview for site ${siteId}`);
+    }
+    return siteRevs[siteRevs.length - 1].config;
   }
 
   /**
@@ -142,8 +214,21 @@ export class TenantRepository {
 
     const site = this.sites.get(siteId)!;
     site.currentDraftRevisionId = newRevision.id;
+    this.persistSiteToFile(siteId);
 
     return newRevision;
+  }
+
+  /**
+   * Update draft configuration alias (TDD §8.4, §13.1)
+   */
+  async updateDraftConfiguration(
+    ctx: TenantContext,
+    siteId: string,
+    newConfig: SiteConfiguration,
+    reason?: string
+  ): Promise<StoredSiteRevision> {
+    return this.saveRevision(ctx, siteId, newConfig, reason);
   }
 
   /**

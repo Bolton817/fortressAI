@@ -60,18 +60,18 @@ export function CtaFullwidthSection({
           className="text-3xl sm:text-5xl font-extrabold tracking-tight leading-tight"
           style={{ fontFamily: "var(--theme-font-display, serif)" }}
         >
-          {content.headline}
+          {content.headline || content.heading}
         </h2>
 
-        {content.subhead ? (
+        {content.subhead || content.body ? (
           <p data-animate className="text-lg sm:text-xl opacity-90 max-w-2xl mx-auto">
-            {content.subhead}
+            {content.subhead || content.body}
           </p>
         ) : null}
 
         <div data-animate className="pt-2">
           <Link
-            href={content.ctaRoute}
+            href={content.ctaRoute || content.targetRoute || "#"}
             className="inline-flex items-center gap-2 px-8 py-4 text-base font-bold shadow-lg transition-transform hover:scale-105"
             style={{
               backgroundColor: "var(--theme-accent, #d6a24a)",
@@ -79,7 +79,7 @@ export function CtaFullwidthSection({
               borderRadius: "var(--theme-radius-btn, 0.5rem)",
             }}
           >
-            <span>{content.ctaLabel}</span>
+            <span>{content.ctaLabel || content.buttonLabel || "Get in Touch"}</span>
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>

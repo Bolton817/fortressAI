@@ -78,7 +78,7 @@ export function HeroSplitSection({
             {/* CTAs */}
             <div data-animate className="flex flex-wrap items-center gap-4 pt-4">
               <Link
-                href={content.primaryCtaRoute}
+                href={content.primaryCtaRoute || content.primaryCta?.targetRoute || "#"}
                 className="inline-flex items-center justify-center gap-2 px-6 py-3.5 text-base font-medium shadow-md transition-all hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-offset-2"
                 style={{
                   backgroundColor: "var(--theme-primary, #174a50)",
@@ -86,13 +86,14 @@ export function HeroSplitSection({
                   borderRadius: "var(--theme-radius-btn, 0.5rem)",
                 }}
               >
-                <span>{content.primaryCtaLabel}</span>
+                <span>{content.primaryCtaLabel || content.primaryCta?.label || "Learn More"}</span>
                 <ArrowRight className="w-4 h-4" />
               </Link>
 
-              {content.secondaryCtaLabel && content.secondaryCtaRoute ? (
+              {(content.secondaryCtaLabel || content.secondaryCta?.label) &&
+              (content.secondaryCtaRoute || content.secondaryCta?.targetRoute) ? (
                 <Link
-                  href={content.secondaryCtaRoute}
+                  href={content.secondaryCtaRoute || content.secondaryCta?.targetRoute || "#"}
                   className="inline-flex items-center justify-center px-6 py-3.5 text-base font-medium transition-all hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-offset-2 border"
                   style={{
                     color: "var(--theme-text, #1d2a2a)",
@@ -101,7 +102,7 @@ export function HeroSplitSection({
                     backgroundColor: "var(--theme-surface, #ffffff)",
                   }}
                 >
-                  {content.secondaryCtaLabel}
+                  {content.secondaryCtaLabel || content.secondaryCta?.label}
                 </Link>
               ) : null}
             </div>

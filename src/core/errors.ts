@@ -18,17 +18,30 @@ export interface ApiErrorEnvelope {
   };
 }
 
+export function normalizeFieldErrors(
+  errors?: FieldError[] | Record<string, any>
+): FieldError[] | undefined {
+  if (!errors) return undefined;
+  if (Array.isArray(errors)) return errors;
+  return Object.entries(errors).flatMap(([field, val]) => {
+    if (Array.isArray(val)) {
+      return val.map((message) => ({ field, message: String(message) }));
+    }
+    return [{ field, message: String(val) }];
+  });
+}
+
 export abstract class FortressError extends Error {
   abstract readonly code: string;
   abstract readonly statusCode: number;
   readonly retryable: boolean;
   readonly fieldErrors?: FieldError[];
 
-  constructor(message: string, retryable = false, fieldErrors?: FieldError[]) {
+  constructor(message: string, retryable = false, fieldErrors?: FieldError[] | Record<string, any>) {
     super(message);
     this.name = this.constructor.name;
     this.retryable = retryable;
-    this.fieldErrors = fieldErrors;
+    this.fieldErrors = normalizeFieldErrors(fieldErrors);
   }
 
   toEnvelope(requestId = `req_${Math.random().toString(36).substring(2, 11)}`): ApiErrorEnvelope {
@@ -55,7 +68,7 @@ export class TenantAccessDeniedError extends FortressError {
 export class SchemaValidationError extends FortressError {
   readonly code = "SCHEMA_VALIDATION_ERROR";
   readonly statusCode = 422;
-  constructor(message: string, fieldErrors?: FieldError[]) {
+  constructor(message: string, fieldErrors?: FieldError[] | Record<string, any>) {
     super(message, false, fieldErrors);
   }
 }

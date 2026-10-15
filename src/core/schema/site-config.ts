@@ -34,7 +34,7 @@ export type SectionInstance = z.infer<typeof SectionInstanceSchema>;
 
 export const PageRouteSchema = z.object({
   pageId: z.string().min(1),
-  slug: z.string().regex(/^\/([a-z0-9\-_]*)$/, "Must be root '/' or lowercase slug path '/name'"),
+  slug: z.string().regex(/^\/([a-z0-9\-_]+(\/[a-z0-9\-_]+)*)?$/, "Must be root '/' or lowercase slug path '/name' or '/parent/child'"),
   title: z.string().min(1),
   pageType: PageTypeSchema,
   seo: z.object({
@@ -75,7 +75,7 @@ export const FooterColumnSchema = z.object({
 export type FooterColumn = z.infer<typeof FooterColumnSchema>;
 
 export const SiteConfigurationSchema = z.object({
-  siteId: z.string().uuid(),
+  siteId: z.string().min(1),
   platformSlug: z.string().min(3),
   version: z.number().int().positive(),
   businessProfile: BusinessProfileSummarySchema,

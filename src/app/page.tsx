@@ -23,7 +23,14 @@ export default function Home() {
               Verification harness for the core invariant: <em>Canonical website is structured configuration plus versioned content and assets. A shared renderer serves managed sites; a separate export pipeline compiles that same configuration into portable static files.</em>
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href="/build"
+              className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-md transition flex items-center gap-2"
+            >
+              <Sparkles className="w-4 h-4" />
+              Stage 2: AI Build Console ↗
+            </Link>
             <span className="text-xs px-2.5 py-1 bg-slate-200 text-slate-700 font-mono rounded">TDD v1.0 Compliant</span>
             <span className="text-xs px-2.5 py-1 bg-emerald-100 text-emerald-800 font-medium rounded">WCAG 2.2 AA</span>
           </div>

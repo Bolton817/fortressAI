@@ -18,19 +18,7 @@ export default async function PreviewPage({ params }: PreviewPageProps) {
   let config: SiteConfiguration;
 
   try {
-    const site = await tenantRepository
-      .getSite({ userId: "usr_tenant_a_tourism" }, siteId)
-      .catch(async () => {
-        return await tenantRepository.getSite({ userId: "usr_tenant_b_consulting" }, siteId);
-      })
-      .catch(async () => {
-        return await tenantRepository.getSite({ userId: "usr_tenant_c_composed" }, siteId);
-      });
-
-    config = await tenantRepository.getDraftConfiguration(
-      { userId: site.ownerUserId },
-      siteId
-    );
+    config = await tenantRepository.getPreviewConfiguration(siteId);
   } catch {
     notFound();
   }

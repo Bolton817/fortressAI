@@ -33,6 +33,26 @@ function rewriteContentLinks(content: any, prefix?: string): any {
   if (clone.primaryCtaRoute) clone.primaryCtaRoute = prefixRoute(clone.primaryCtaRoute, prefix);
   if (clone.secondaryCtaRoute) clone.secondaryCtaRoute = prefixRoute(clone.secondaryCtaRoute, prefix);
 
+  if (clone.primaryCta?.targetRoute) {
+    clone.primaryCta = {
+      ...clone.primaryCta,
+      targetRoute: prefixRoute(clone.primaryCta.targetRoute, prefix),
+    };
+    if (!clone.primaryCtaRoute) {
+      clone.primaryCtaRoute = clone.primaryCta.targetRoute;
+    }
+  }
+
+  if (clone.secondaryCta?.targetRoute) {
+    clone.secondaryCta = {
+      ...clone.secondaryCta,
+      targetRoute: prefixRoute(clone.secondaryCta.targetRoute, prefix),
+    };
+    if (!clone.secondaryCtaRoute) {
+      clone.secondaryCtaRoute = clone.secondaryCta.targetRoute;
+    }
+  }
+
   if (Array.isArray(clone.links)) {
     clone.links = clone.links.map((l: any) => {
       const rawTarget = l.href || l.targetRoute || l.route;
