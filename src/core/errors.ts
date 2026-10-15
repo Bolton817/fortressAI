@@ -57,6 +57,14 @@ export abstract class FortressError extends Error {
   }
 }
 
+export class UnauthorizedError extends FortressError {
+  readonly code = "UNAUTHORIZED";
+  readonly statusCode = 401;
+  constructor(message = "Authentication required to access this resource.") {
+    super(message, false);
+  }
+}
+
 export class TenantAccessDeniedError extends FortressError {
   readonly code = "TENANT_ACCESS_DENIED";
   readonly statusCode = 403;

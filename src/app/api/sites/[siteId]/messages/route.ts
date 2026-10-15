@@ -5,6 +5,7 @@ import { globalActionGuard } from "@/ai/conversation/action-guard";
 import { tenantRepository } from "@/db/tenant-repository";
 import { seedPhase0Tenants } from "@/db/seed-data";
 import { SiteConfiguration } from "@/core/schema/site-config";
+import { getCurrentUser } from "@/core/auth/auth-guard";
 
 /**
  * Fortress AI — Conversational Editing & Intent Routing API (TDD §13, FR-030, FR-031)
@@ -28,11 +29,17 @@ export async function POST(
       );
     }
 
-    // Resolve tenant site config
-    const site = await tenantRepository
-      .getSite({ userId: "usr_tenant_a_tourism" }, siteId)
-      .catch(async () => tenantRepository.getSite({ userId: "usr_tenant_b_consulting" }, siteId))
-      .catch(async () => tenantRepository.getSite({ userId: `usr_owner_${siteId.slice(0, 8)}` }, siteId));
+    // Resolve tenant site config with auth support
+    const currentUser = await getCurrentUser(req);
+    let site;
+    if (currentUser) {
+      site = await tenantRepository.getSite({ userId: currentUser.id }, siteId);
+    } else {
+      site = await tenantRepository
+        .getSite({ userId: "usr_tenant_a_tourism" }, siteId)
+        .catch(async () => tenantRepository.getSite({ userId: "usr_tenant_b_consulting" }, siteId))
+        .catch(async () => tenantRepository.getSite({ userId: `usr_owner_${siteId.slice(0, 8)}` }, siteId));
+    }
 
     const currentConfig = await tenantRepository.getDraftConfiguration(
       { userId: site.ownerUserId },

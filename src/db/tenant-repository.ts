@@ -237,6 +237,7 @@ export class TenantRepository {
    * Only returns the published release or draft for preview.
    */
   async resolvePublicSiteBySlug(slug: string): Promise<StoredSite | null> {
+    this.loadAllSitesFromDisk();
     for (const site of this.sites.values()) {
       if (site.platformSlug.toLowerCase() === slug.toLowerCase()) {
         return { ...site };
@@ -244,7 +245,140 @@ export class TenantRepository {
     }
     return null;
   }
+
+  /**
+   * Load all sites from disk directory into memory
+   */
+  public loadAllSitesFromDisk(): void {
+    try {
+      const dir = path.join(process.cwd(), ".data", "sites");
+      if (fs.existsSync(dir)) {
+        const files = fs.readdirSync(dir).filter((f) => f.endsWith(".json"));
+        for (const file of files) {
+          const siteId = file.replace(".json", "");
+          this.loadSiteFromFile(siteId);
+        }
+      }
+    } catch {}
+  }
+
+  /**
+   * List only sites where the user is an owner or member (FR-011, FR-014)
+   */
+  async listSitesForUser(userId: string): Promise<StoredSite[]> {
+    this.loadAllSitesFromDisk();
+    const results: StoredSite[] = [];
+    for (const [siteId, members] of this.memberships.entries()) {
+      if (members.has(userId)) {
+        const site = this.sites.get(siteId);
+        if (site && site.lifecycleStatus !== "deleted") {
+          results.push({ ...site });
+        }
+      }
+    }
+    return results;
+  }
+
+  /**
+   * Create a new site bound to an owner user (FR-014)
+   */
+  async createSite(
+    ownerUserId: string,
+    name: string,
+    platformSlug: string,
+    initialConfig?: SiteConfiguration
+  ): Promise<StoredSite> {
+    this.loadAllSitesFromDisk();
+    const cleanSlug = platformSlug.trim().toLowerCase().replace(/[^a-z0-9\-]/g, "-");
+
+    // Check slug uniqueness
+    for (const s of this.sites.values()) {
+      if (s.platformSlug.toLowerCase() === cleanSlug) {
+        throw new Error(`Platform slug '${cleanSlug}' is already reserved.`);
+      }
+    }
+
+    const siteId = crypto.randomUUID();
+    const storedSite: StoredSite = {
+      id: siteId,
+      ownerUserId,
+      name: name.trim(),
+      platformSlug: cleanSlug,
+      lifecycleStatus: "draft",
+    };
+
+    this.sites.set(siteId, storedSite);
+    this.memberships.set(siteId, new Set([ownerUserId]));
+
+    if (initialConfig) {
+      const validatedConfig = SiteConfigurationSchema.parse(initialConfig);
+      const rev: StoredSiteRevision = {
+        id: `rev_${siteId}_v1`,
+        siteId,
+        version: 1,
+        config: validatedConfig,
+        createdBy: ownerUserId,
+        reason: "Initial creation",
+        createdAt: new Date(),
+      };
+      this.revisions.set(siteId, [rev]);
+      storedSite.currentDraftRevisionId = rev.id;
+    } else {
+      this.revisions.set(siteId, []);
+    }
+
+    this.persistSiteToFile(siteId);
+    return storedSite;
+  }
+
+  /**
+   * Archive a site (FR-014)
+   */
+  async archiveSite(ctx: TenantContext, siteId: string): Promise<StoredSite> {
+    this.verifyAccess(ctx, siteId);
+    const site = this.sites.get(siteId)!;
+    site.lifecycleStatus = "archived";
+    this.persistSiteToFile(siteId);
+    return { ...site };
+  }
+
+  /**
+   * Delete a site (FR-014)
+   */
+  async deleteSite(ctx: TenantContext, siteId: string): Promise<void> {
+    this.verifyAccess(ctx, siteId);
+    const site = this.sites.get(siteId)!;
+    if (site.ownerUserId !== ctx.userId) {
+      throw new TenantAccessDeniedError("Only the site owner can delete this site.");
+    }
+
+    site.lifecycleStatus = "deleted";
+    this.persistSiteToFile(siteId);
+  }
+
+  /**
+   * Reset in-memory cache for testing
+   */
+  public clearAll(): void {
+    this.sites.clear();
+    this.memberships.clear();
+    this.revisions.clear();
+  }
+
+  /**
+   * Delete site permanently from memory and disk for test teardown
+   */
+  public deleteSitePermanently(siteId: string): void {
+    this.sites.delete(siteId);
+    this.memberships.delete(siteId);
+    this.revisions.delete(siteId);
+    try {
+      const filePath = getSiteFilePath(siteId);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    } catch {}
+  }
 }
+
 
 // Global shared repository instance for Phase 0
 export const tenantRepository = new TenantRepository();

@@ -10,7 +10,8 @@
     "lint": "eslint",
     "verify:phase0": "tsx scripts/verify-phase-0.ts",
     "verify:phase1": "tsx scripts/verify-phase-1.ts",
-    "verify:phase2": "tsx scripts/verify-phase-2.ts"
+    "verify:phase2": "tsx scripts/verify-phase-2.ts",
+    "verify:phase3": "tsx scripts/verify-phase-3.ts"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",
@@ -31,6 +32,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.1",
+    "pdf-parse": "^2.4.5",
     "prisma": "^6.4.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",

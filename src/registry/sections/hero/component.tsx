@@ -10,10 +10,12 @@ export interface HeroSplitContent {
   headline: string;
   subheadline: string;
   badge?: string;
-  primaryCtaLabel: string;
-  primaryCtaRoute: string;
+  primaryCtaLabel?: string;
+  primaryCtaRoute?: string;
+  primaryCta?: { label?: string; targetRoute?: string };
   secondaryCtaLabel?: string;
   secondaryCtaRoute?: string;
+  secondaryCta?: { label?: string; targetRoute?: string };
 }
 
 export function HeroSplitSection({

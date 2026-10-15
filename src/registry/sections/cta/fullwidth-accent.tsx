@@ -31,10 +31,14 @@ export const ctaFullwidthManifest: SectionManifest = {
 };
 
 export interface CtaFullwidthContent {
-  headline: string;
+  headline?: string;
+  heading?: string;
   subhead?: string;
-  ctaLabel: string;
-  ctaRoute: string;
+  body?: string;
+  ctaLabel?: string;
+  buttonLabel?: string;
+  ctaRoute?: string;
+  targetRoute?: string;
 }
 
 export function CtaFullwidthSection({
