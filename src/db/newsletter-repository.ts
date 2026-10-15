@@ -180,6 +180,31 @@ export class NewsletterRepository {
     return !consent.isSubscribed || Boolean(consent.suppressionReason);
   }
 
+  getConsent(email: string): StoredNewsletterConsent | null {
+    return this.getByEmail(email);
+  }
+
+  recordConsent(input: {
+    email: string;
+    userId?: string;
+    status?: "subscribed" | "unsubscribed";
+    optInSource?: string;
+    consentSource?: string;
+    policyVersion?: string;
+    ipAddress?: string;
+  }): StoredNewsletterConsent {
+    if (input.status === "unsubscribed") {
+      return this.recordUnsubscribe(input.email, "user_unsubscribed")!;
+    }
+    return this.recordOptIn({
+      email: input.email,
+      userId: input.userId,
+      consentSource: input.optInSource || input.consentSource || "account_settings",
+      policyVersion: input.policyVersion || "1.0",
+      ipAddress: input.ipAddress,
+    });
+  }
+
   getByEmail(email: string): StoredNewsletterConsent | null {
     const norm = email.trim().toLowerCase();
     const id = this.emailIndex.get(norm);

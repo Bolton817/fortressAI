@@ -145,6 +145,12 @@ export class UserRepository {
     return user;
   }
 
+  public seedUser(user: UserRecord): void {
+    this.users.set(user.id, user);
+    this.emailIndex.set(user.emailNormalised, user.id);
+    this.persistUser(user);
+  }
+
   public findById(id: string): UserRecord | null {
     this.loadFromDisk();
     return this.users.get(id) || null;

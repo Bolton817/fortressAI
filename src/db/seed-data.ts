@@ -1,5 +1,6 @@
 import { SiteConfiguration } from "@/core/schema/site-config";
 import { tenantRepository } from "./tenant-repository";
+import { userRepository } from "./user-repository";
 import { composeWebsite } from "@/composition/composer";
 
 /**
@@ -346,6 +347,40 @@ export const SITE_C_ID = "c1a2b3c4-1111-4111-a111-999999999999";
  * Initializes the repository with sample tenants for Phase 0 and Phase 1 proof
  */
 export function seedPhase0Tenants(): void {
+  // Clear repo
+  tenantRepository.clearAll();
+
+  // Seed Users
+  userRepository.seedUser({
+    id: USER_A_ID,
+    emailNormalised: "safari@marahorizon.co.ke",
+    displayName: "Mara Horizon Expeditions",
+    status: "active",
+    timezone: "Africa/Nairobi",
+    createdAt: new Date("2026-10-14T00:00:00Z"),
+    updatedAt: new Date("2026-10-14T00:00:00Z"),
+  });
+
+  userRepository.seedUser({
+    id: USER_B_ID,
+    emailNormalised: "consulting@nairobiadvisory.co.ke",
+    displayName: "Nairobi Advisory Partners",
+    status: "active",
+    timezone: "Africa/Nairobi",
+    createdAt: new Date("2026-10-14T00:00:00Z"),
+    updatedAt: new Date("2026-10-14T00:00:00Z"),
+  });
+
+  userRepository.seedUser({
+    id: USER_C_ID,
+    emailNormalised: "safari@serengetiechoes.co.ke",
+    displayName: "Serengeti Echoes Safaris",
+    status: "active",
+    timezone: "Africa/Nairobi",
+    createdAt: new Date("2026-10-14T00:00:00Z"),
+    updatedAt: new Date("2026-10-14T00:00:00Z"),
+  });
+
   // Tenant A: Mara Horizon Expeditions
   tenantRepository.seedSite(
     USER_A_ID,

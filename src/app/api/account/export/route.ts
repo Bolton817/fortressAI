@@ -1,72 +1,33 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/core/auth/auth-guard";
-import { tenantRepository } from "@/db/tenant-repository";
-import { notificationRepository } from "@/db/notification-repository";
-import { auditRepository } from "@/db/audit-repository";
+import { dataPortabilityService } from "@/core/export/data-portability-service";
 
+export const dynamic = "force-dynamic";
+
+/**
+ * GET /api/account/export
+ * Customer Data Portability Endpoint (TDD §30.1–§30.3, FR-084)
+ * Returns a comprehensive, structured JSON export of all customer-owned content and records.
+ * Invariant: Internal platform prompts, server secrets, and other tenant data are strictly excluded.
+ */
 export async function GET(request: Request) {
   try {
     const user = await requireAuth(request);
-
-    // Fetch user's owned sites
-    const sites = await tenantRepository.listSitesForUser(user.id);
-
-    // Fetch configurations for each site
-    const fullSites = [];
-    for (const site of sites) {
-      try {
-        const config = await tenantRepository.getDraftConfiguration({ userId: user.id }, site.id);
-        fullSites.push({
-          site,
-          configuration: config,
-        });
-      } catch {
-        fullSites.push({ site });
-      }
-    }
-
-    // Fetch notifications
-    const notifications = notificationRepository.findForUser(user.id);
-
-    // Fetch audit history
-    const auditLogs = auditRepository.findByActor(user.id);
-
-    const exportBundle = {
-      exportVersion: "1.0",
-      exportedAt: new Date().toISOString(),
-      user: {
-        id: user.id,
-        email: user.emailNormalised,
-        displayName: user.displayName,
-        phoneOptional: user.phoneOptional,
-        timezone: user.timezone,
-        status: user.status,
-        emailVerifiedAt: user.emailVerifiedAt,
-        termsAcceptedAt: user.termsAcceptedAt,
-        policyVersion: user.policyVersion,
-        createdAt: user.createdAt,
-      },
-      sites: fullSites,
-      notifications,
-      auditLogs,
-    };
-
-    auditRepository.record({
-      actorUserId: user.id,
-      action: "user.data_exported",
-      targetType: "user",
-      targetId: user.id,
-    });
+    const exportBundle = await dataPortabilityService.generateAccountExport(user.id);
 
     return NextResponse.json(exportBundle, {
+      status: 200,
       headers: {
+        "Content-Type": "application/json",
         "Content-Disposition": `attachment; filename="fortress-account-export-${user.id}.json"`,
+        "Cache-Control": "private, no-cache, no-store, must-revalidate",
       },
     });
   } catch (err: any) {
-    if (err.statusCode === 401) {
+    if (err.statusCode === 401 || err.message?.includes("Unauthorized")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    return NextResponse.json({ error: "Failed to export account data" }, { status: 500 });
+    const message = err instanceof Error ? err.message : "Failed to export account data";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

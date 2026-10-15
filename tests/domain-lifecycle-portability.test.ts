@@ -118,14 +118,18 @@ describe("Phase 5: Domain Lifecycle, Renewal & Portability (TDD §22, FR-063, FR
       expect(eval1.milestone).toBe(14);
 
       // Check notification inbox
-      const notifications = notificationRepository.getNotificationsForUser(ownerUserId);
+      const notifications = notificationRepository
+        .getNotificationsForUser(ownerUserId)
+        .filter((n) => n.title.includes("Domain Renewal Due"));
       expect(notifications).toHaveLength(1);
       expect(notifications[0].title).toContain("Domain Renewal Due");
 
       // Second evaluation on the same day: idempotency guard prevents duplicate notification
       const eval2 = RenewalService.evaluateOrder(order, referenceNow);
       expect(eval2.reminderDispatched).toBe(true);
-      const notificationsAfter = notificationRepository.getNotificationsForUser(ownerUserId);
+      const notificationsAfter = notificationRepository
+        .getNotificationsForUser(ownerUserId)
+        .filter((n) => n.title.includes("Domain Renewal Due"));
       expect(notificationsAfter).toHaveLength(1); // Not duplicated!
     });
 

@@ -186,6 +186,22 @@ export class TenantRepository {
   }
 
   /**
+   * List all revisions for a site guarded by tenant authorization
+   */
+  async listRevisions(ctx: TenantContext, siteId: string): Promise<StoredSiteRevision[]> {
+    this.verifyAccess(ctx, siteId);
+    const siteRevs = this.revisions.get(siteId) || [];
+    return siteRevs.map((r) => ({ ...r }));
+  }
+
+  /**
+   * Alias for listing site releases/revisions for tenant data export
+   */
+  async listReleases(ctx: TenantContext, siteId: string): Promise<StoredSiteRevision[]> {
+    return this.listRevisions(ctx, siteId);
+  }
+
+  /**
    * Save a new immutable revision (TDD §8.4, §26.2)
    */
   async saveRevision(

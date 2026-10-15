@@ -171,6 +171,10 @@ export class UsageCreditRepository {
     );
   }
 
+  getLedgerForUser(userId: string): StoredUsageCreditRecord[] {
+    return this.listRecordsForUser(userId);
+  }
+
   /**
    * Calculates net debited credits for a user within a specified period start date.
    * Net = debited credits minus refunded credits.
