@@ -71,6 +71,41 @@ export class NotificationService {
       targetRoute: "/dashboard",
     });
   }
+
+  public notifySitePublished(data: {
+    userId: string;
+    siteId: string;
+    releaseNumber: number;
+    publishedUrl: string;
+  }): NotificationRecord {
+    return notificationRepository.createNotification({
+      userId: data.userId,
+      siteId: data.siteId,
+      idempotencyKey: `publish_${data.siteId}_rel_${data.releaseNumber}`,
+      type: "BUILD_SUCCEEDED",
+      title: `Website Published (Release #${data.releaseNumber})`,
+      body: "Your website has been successfully published and is now live.",
+      targetRoute: data.publishedUrl,
+    });
+  }
+
+  public notifySiteRolledBack(data: {
+    userId: string;
+    siteId: string;
+    releaseNumber: number;
+    publishedUrl: string;
+  }): NotificationRecord {
+    const timestamp = Date.now();
+    return notificationRepository.createNotification({
+      userId: data.userId,
+      siteId: data.siteId,
+      idempotencyKey: `rollback_${data.siteId}_rel_${data.releaseNumber}_${timestamp}`,
+      type: "BUILD_SUCCEEDED",
+      title: `Website Rolled Back to Release #${data.releaseNumber}`,
+      body: `Your live website has been reverted to Release #${data.releaseNumber}. All newer releases remain preserved in your history.`,
+      targetRoute: data.publishedUrl,
+    });
+  }
 }
 
 export const notificationService = new NotificationService();

@@ -8,6 +8,7 @@ export interface AuditEventRecord {
   targetType: "user" | "site" | "session" | "notification" | "security";
   targetId: string;
   metadataJson?: Record<string, any>;
+  metadata?: Record<string, any>;
   ipAddress?: string | null;
   userAgent?: string | null;
   createdAt: Date;
@@ -58,6 +59,7 @@ export class AuditRepository {
     targetType: "user" | "site" | "session" | "notification" | "security";
     targetId: string;
     metadataJson?: Record<string, any>;
+    metadata?: Record<string, any>;
     ipAddress?: string | null;
     userAgent?: string | null;
   }): AuditEventRecord {
@@ -68,7 +70,8 @@ export class AuditRepository {
       action: data.action,
       targetType: data.targetType,
       targetId: data.targetId,
-      metadataJson: data.metadataJson,
+      metadataJson: data.metadataJson || data.metadata,
+      metadata: data.metadataJson || data.metadata,
       ipAddress: data.ipAddress || null,
       userAgent: data.userAgent || null,
       createdAt: new Date(),
@@ -77,6 +80,19 @@ export class AuditRepository {
     this.events.push(event);
     this.persistEvent(event);
     return event;
+  }
+
+  public listEvents(filter?: {
+    targetType?: string;
+    targetId?: string;
+    actorUserId?: string;
+  }): AuditEventRecord[] {
+    return this.events.filter((e) => {
+      if (filter?.targetType && e.targetType !== filter.targetType) return false;
+      if (filter?.targetId && e.targetId !== filter.targetId) return false;
+      if (filter?.actorUserId && e.actorUserId !== filter.actorUserId) return false;
+      return true;
+    });
   }
 
   public findByTarget(targetType: string, targetId: string): AuditEventRecord[] {

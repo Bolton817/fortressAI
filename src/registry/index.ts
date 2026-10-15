@@ -119,3 +119,11 @@ class SectionRegistry {
 }
 
 export const sectionRegistry = new SectionRegistry();
+
+export function getSectionManifest(id: string) {
+  try {
+    return sectionRegistry.getEntry(id).manifest;
+  } catch {
+    return undefined;
+  }
+}

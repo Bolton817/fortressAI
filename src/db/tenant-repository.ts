@@ -357,6 +357,67 @@ export class TenantRepository {
   }
 
   /**
+   * Public lookup by platform slug (TDD §7.1, §20)
+   */
+  public getSiteBySlug(platformSlug: string): StoredSite | null {
+    // Check in-memory
+    for (const site of this.sites.values()) {
+      if (site.platformSlug === platformSlug && site.lifecycleStatus !== "deleted") {
+        return { ...site };
+      }
+    }
+
+    // Check disk files
+    try {
+      const dir = path.join(process.cwd(), ".data", "sites");
+      if (fs.existsSync(dir)) {
+        const files = fs.readdirSync(dir);
+        for (const file of files) {
+          if (file.endsWith(".json")) {
+            const raw = fs.readFileSync(path.join(dir, file), "utf8");
+            const data = JSON.parse(raw);
+            if (data?.site?.platformSlug === platformSlug && data?.site?.lifecycleStatus !== "deleted") {
+              this.sites.set(data.site.id, data.site);
+              if (data.members) this.memberships.set(data.site.id, new Set(data.members));
+              if (data.revisions) this.revisions.set(data.site.id, data.revisions);
+              return { ...data.site };
+            }
+          }
+        }
+      }
+    } catch {}
+
+    return null;
+  }
+
+  /**
+   * Internal/system lookup without tenant context (for public router)
+   */
+  public getSiteDirect(siteId: string): StoredSite | null {
+    if (!this.sites.has(siteId)) {
+      this.loadSiteFromFile(siteId);
+    }
+    const site = this.sites.get(siteId);
+    return site ? { ...site } : null;
+  }
+
+  /**
+   * Atomically point publishedReleaseId to a new or rolled-back release (TDD §20.1)
+   */
+  public updatePublishedRelease(siteId: string, releaseId: string): void {
+    if (!this.sites.has(siteId)) {
+      this.loadSiteFromFile(siteId);
+    }
+    const site = this.sites.get(siteId);
+    if (!site) {
+      throw new ResourceNotFoundError("Site", siteId);
+    }
+    site.publishedReleaseId = releaseId;
+    site.lifecycleStatus = "published";
+    this.persistSiteToFile(siteId);
+  }
+
+  /**
    * Reset in-memory cache for testing
    */
   public clearAll(): void {

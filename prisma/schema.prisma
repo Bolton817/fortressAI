@@ -92,6 +92,8 @@ model Site {
   pages                 Page[]
   assetBindings         AssetBinding[]
   notifications         Notification[]
+  releases              Release[]
+  domains               DomainMapping[]
 
   @@index([ownerUserId])
   @@map("sites")
@@ -251,4 +253,45 @@ model AuditEvent {
   @@index([actorUserId])
   @@index([targetType, targetId])
   @@map("audit_events")
+}
+
+model Release {
+  id                  String   @id @default(uuid())
+  siteId              String   @map("site_id")
+  releaseNumber       Int      @map("release_number")
+  configJson          Json     @map("config_json")
+  commitMessage       String?  @map("commit_message")
+  publishedByUserId   String   @map("published_by_user_id")
+  healthStatus        String   @default("healthy") @map("health_status") // healthy, rolled_back, degraded
+  buildDurationMs     Int?     @map("build_duration_ms")
+  artefactHash        String?  @map("artefact_hash")
+  seoMetadataSnapshot Json?    @map("seo_metadata_snapshot")
+  sitemapXml          String?  @map("sitemap_xml")
+  robotsTxt           String?  @map("robots_txt")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  site                Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@unique([siteId, releaseNumber])
+  @@index([siteId])
+  @@map("releases")
+}
+
+model DomainMapping {
+  id                 String    @id @default(uuid())
+  siteId             String    @map("site_id")
+  hostname           String    @unique
+  domainType         String    @default("platform_subdomain") @map("domain_type") // platform_subdomain, custom_apex, custom_subdomain
+  verificationToken  String?   @map("verification_token")
+  verificationStatus String    @default("pending") @map("verification_status") // pending, verified, failed
+  sslStatus          String    @default("pending") @map("ssl_status") // pending, active, error
+  isPrimary          Boolean   @default(false) @map("is_primary")
+  verifiedAt         DateTime? @map("verified_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  site               Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([siteId])
+  @@map("domain_mappings")
 }

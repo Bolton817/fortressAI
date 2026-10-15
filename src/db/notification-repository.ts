@@ -119,6 +119,10 @@ export class NotificationRepository {
     return results;
   }
 
+  public listForUser(userId: string, options?: { unreadOnly?: boolean; limit?: number }): NotificationRecord[] {
+    return this.findForUser(userId, options);
+  }
+
   public countUnreadForUser(userId: string): number {
     this.loadFromDisk();
     let count = 0;

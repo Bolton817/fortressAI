@@ -81,6 +81,8 @@ export class SchemaValidationError extends FortressError {
   }
 }
 
+export class ValidationError extends SchemaValidationError {}
+
 export class RevisionConflictError extends FortressError {
   readonly code = "SITE_REVISION_CONFLICT";
   readonly statusCode = 409;

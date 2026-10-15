@@ -66,13 +66,29 @@ export default async function WebsitesManagementPage() {
                 {sites.map((site) => (
                   <tr key={site.id} className="hover:bg-zinc-50/60 transition-colors">
                     <td className="py-4 px-4 sm:px-6">
-                      <div className="font-semibold text-zinc-900">{site.name}</div>
+                      <Link
+                        href={`/dashboard/websites/${site.id}`}
+                        className="font-semibold text-zinc-900 hover:text-emerald-700 hover:underline transition-colors block"
+                      >
+                        {site.name}
+                      </Link>
                       <div className="text-xs text-zinc-400 font-mono mt-0.5 truncate max-w-xs">
                         ID: {site.id}
                       </div>
                     </td>
                     <td className="py-4 px-4 font-mono text-xs text-zinc-600">
-                      {site.platformSlug}.fortress.ai
+                      {site.lifecycleStatus === "published" ? (
+                        <Link
+                          href={`/site/${site.platformSlug}`}
+                          target="_blank"
+                          className="hover:underline text-emerald-700 inline-flex items-center gap-1 font-semibold"
+                        >
+                          <span>{site.platformSlug}.fortressai.app</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </Link>
+                      ) : (
+                        <span>{site.platformSlug}.fortressai.app</span>
+                      )}
                     </td>
                     <td className="py-4 px-4">
                       <span
@@ -90,6 +106,12 @@ export default async function WebsitesManagementPage() {
                     </td>
                     <td className="py-4 px-4 sm:px-6 text-right">
                       <div className="inline-flex items-center gap-2">
+                        <Link
+                          href={`/dashboard/websites/${site.id}`}
+                          className="px-2.5 py-1.5 text-xs font-semibold text-zinc-700 hover:text-zinc-900 bg-zinc-100 hover:bg-zinc-200 rounded-lg transition-colors"
+                        >
+                          Publish
+                        </Link>
                         <Link
                           href={`/preview/${site.id}`}
                           target="_blank"
