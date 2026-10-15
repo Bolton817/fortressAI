@@ -54,12 +54,23 @@ export function compileSiteHtml(
   // Render each page route
   for (const page of config.pages) {
     try {
-      let pageBodyHtml = "";
+      let headerHtml = "";
+      let mainHtml = "";
+      let footerHtml = "";
 
       for (const section of page.sections) {
-        pageBodyHtml += renderSectionInstanceToHtml(section, config);
+        const secHtml = renderSectionInstanceToHtml(section, config);
         assetsCount += section.assetBindings?.length || 0;
+        if (section.sectionId === "shell.header") {
+          headerHtml += secHtml;
+        } else if (section.sectionId === "shell.footer") {
+          footerHtml += secHtml;
+        } else {
+          mainHtml += secHtml;
+        }
       }
+
+      const pageBodyHtml = `${headerHtml}\n    <main id="main-content">\n      ${mainHtml}\n    </main>\n    ${footerHtml}`;
 
       const canonicalUrl = page.seo.canonicalUrl || `${baseUrl}${page.slug === "/" ? "" : page.slug}`;
 
@@ -665,6 +676,16 @@ img { display: block; max-width: 100%; height: auto; }
   .hero-h1 { font-size: 3.5rem; }
   .cards-grid { grid-template-columns: repeat(3, 1fr); }
   .footer-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* WCAG 2.1 AA Vestibular & Reduced Motion Support (TDD §18.3) */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 `;
 }

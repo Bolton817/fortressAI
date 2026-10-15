@@ -1,12 +1,33 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import * as crypto from "node:crypto";
+import { redactObject } from "@/core/observability/redaction";
+
+/**
+ * Fortress AI — Tamper-Evident Append-Only Audit Repository (TDD §32.3, FR-086)
+ * Invariant: Audit records are permanent, append-only, and sanitized against secret leakage.
+ */
+
+export type AuditTargetType =
+  | "user"
+  | "site"
+  | "session"
+  | "notification"
+  | "security"
+  | "domain"
+  | "billing"
+  | "prompt"
+  | "system";
 
 export interface AuditEventRecord {
   id: string;
   actorUserId?: string | null;
   action: string;
-  targetType: "user" | "site" | "session" | "notification" | "security" | "domain";
+  targetType: AuditTargetType;
   targetId: string;
+  outcome?: "success" | "failure";
+  reason?: string | null;
+  requestId?: string | null;
   metadataJson?: Record<string, any>;
   metadata?: Record<string, any>;
   ipAddress?: string | null;
@@ -56,8 +77,11 @@ export class AuditRepository {
   public recordEvent(data: {
     actorUserId?: string | null;
     action: string;
-    targetType: "user" | "site" | "session" | "notification" | "security" | "domain";
+    targetType: AuditTargetType;
     targetId: string;
+    outcome?: "success" | "failure";
+    reason?: string | null;
+    requestId?: string | null;
     metadataJson?: Record<string, any>;
     metadata?: Record<string, any>;
     ipAddress?: string | null;
@@ -69,22 +93,33 @@ export class AuditRepository {
   public record(data: {
     actorUserId?: string | null;
     action: string;
-    targetType: "user" | "site" | "session" | "notification" | "security" | "domain";
+    targetType: AuditTargetType;
     targetId: string;
+    outcome?: "success" | "failure";
+    reason?: string | null;
+    requestId?: string | null;
     metadataJson?: Record<string, any>;
     metadata?: Record<string, any>;
     ipAddress?: string | null;
     userAgent?: string | null;
   }): AuditEventRecord {
     const id = crypto.randomUUID();
+
+    // Sanitize metadata against secret and PII leakage
+    const rawMeta = data.metadataJson || data.metadata || {};
+    const sanitizedMeta = redactObject(rawMeta);
+
     const event: AuditEventRecord = {
       id,
       actorUserId: data.actorUserId || null,
       action: data.action,
       targetType: data.targetType,
       targetId: data.targetId,
-      metadataJson: data.metadataJson || data.metadata,
-      metadata: data.metadataJson || data.metadata,
+      outcome: data.outcome || "success",
+      reason: data.reason || null,
+      requestId: data.requestId || null,
+      metadataJson: sanitizedMeta,
+      metadata: sanitizedMeta,
       ipAddress: data.ipAddress || null,
       userAgent: data.userAgent || null,
       createdAt: new Date(),
@@ -99,11 +134,13 @@ export class AuditRepository {
     targetType?: string;
     targetId?: string;
     actorUserId?: string;
+    action?: string;
   }): AuditEventRecord[] {
     return this.events.filter((e) => {
       if (filter?.targetType && e.targetType !== filter.targetType) return false;
       if (filter?.targetId && e.targetId !== filter.targetId) return false;
       if (filter?.actorUserId && e.actorUserId !== filter.actorUserId) return false;
+      if (filter?.action && e.action !== filter.action) return false;
       return true;
     });
   }
@@ -116,6 +153,25 @@ export class AuditRepository {
     return this.events.filter((e) => e.actorUserId === actorUserId);
   }
 
+  /**
+   * Reconstruct chronological history for a resource
+   */
+  public reconstructHistory(targetId: string): AuditEventRecord[] {
+    return this.events
+      .filter((e) => e.targetId === targetId)
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  }
+
+  /**
+   * Invariant: regular application users and operations CANNOT delete or modify audit events
+   */
+  public deleteEvent(): void {
+    throw new Error("Audit records are immutable and append-only (FR-086, TDD §32.3)");
+  }
+
+  /**
+   * Reset in-memory cache for test suites
+   */
   public clearAll(): void {
     this.events = [];
     try {
