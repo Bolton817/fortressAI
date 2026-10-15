@@ -172,6 +172,52 @@ async function runPhase1Verification() {
   const sitemapFile = exportPackage.files.find((f) => f.path === "sitemap.xml")!;
   assert(sitemapFile.content.includes("https://savanna-trails.fortress-ai.com/services"), "sitemap.xml properly indexes all composed multipage routes");
 
+  // Spin up independent HTTP server to verify all 5 static pages serve with HTTP 200
+  const http = await import("http");
+  const PORT = 8998;
+  const staticServer = http.createServer((req, res) => {
+    let reqPath = req.url?.split("?")[0] || "/";
+    if (reqPath === "/") reqPath = "/index.html";
+    const cleanPath = reqPath.replace(/^\//, "");
+    const file = exportPackage.files.find((f) => f.path === cleanPath);
+
+    if (file) {
+      const ext = cleanPath.split(".").pop();
+      const contentType =
+        ext === "html"
+          ? "text/html"
+          : ext === "xml"
+          ? "application/xml"
+          : ext === "json"
+          ? "application/json"
+          : "text/plain";
+      res.writeHead(200, { "Content-Type": contentType });
+      res.end(file.content);
+    } else {
+      res.writeHead(404);
+      res.end("Not Found");
+    }
+  });
+
+  await new Promise<void>((resolve) => staticServer.listen(PORT, resolve));
+  console.log(`  > Started standalone test HTTP server on port ${PORT}`);
+
+  try {
+    for (const pageName of ["index", "services", "about", "blog", "contact"]) {
+      const resp = await fetch(`http://localhost:${PORT}/${pageName}.html`);
+      const body = await resp.text();
+      assert(resp.status === 200, `Standalone HTTP server serves "${pageName}.html" with HTTP 200`);
+      assert(body.includes("Savanna Trails Kenya"), `Served "${pageName}.html" contains brand name`);
+      assert(body.includes("--theme-primary"), `Served "${pageName}.html" contains embedded CSS variables`);
+    }
+
+    const sitemapResp = await fetch(`http://localhost:${PORT}/sitemap.xml`);
+    assert(sitemapResp.status === 200, "Standalone HTTP server serves sitemap.xml with HTTP 200");
+  } finally {
+    await new Promise<void>((resolve) => staticServer.close(() => resolve()));
+    console.log(`  > Standalone test HTTP server closed cleanly`);
+  }
+
   // --------------------------------------------------------------------------
   // Check 6: Seeded Tenant C Multi-Tenant Resolution
   // --------------------------------------------------------------------------
@@ -192,11 +238,11 @@ async function runPhase1Verification() {
     console.log("  Architectural invariant maintained: Canonical site config");
     console.log("  projects dual projections: dynamic Next.js + static export.");
     console.log("===============================================================\n");
-    process.exit(0);
+    process.exitCode = 0;
   } else {
     console.error("  SOME CHECKS FAILED. See log output above.");
     console.log("===============================================================\n");
-    process.exit(1);
+    process.exitCode = 1;
   }
 }
 
