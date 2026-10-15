@@ -424,6 +424,15 @@ export class TenantRepository {
     this.sites.clear();
     this.memberships.clear();
     this.revisions.clear();
+    try {
+      const dir = path.join(process.cwd(), ".data", "sites");
+      if (fs.existsSync(dir)) {
+        const files = fs.readdirSync(dir);
+        for (const file of files) {
+          fs.unlinkSync(path.join(dir, file));
+        }
+      }
+    } catch {}
   }
 
   /**

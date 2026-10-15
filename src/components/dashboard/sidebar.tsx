@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Sparkles, Globe, User, LogOut, ShieldCheck } from "lucide-react";
+import { Home, Sparkles, Globe, User, LogOut, ShieldCheck, CreditCard } from "lucide-react";
 
 interface SidebarProps {
   user?: {
@@ -20,6 +20,7 @@ export function Sidebar({ user }: SidebarProps) {
     { label: "Home", href: "/dashboard", icon: Home },
     { label: "Build", href: "/build", icon: Sparkles },
     { label: "Websites", href: "/dashboard/websites", icon: Globe },
+    { label: "Billing", href: "/dashboard/billing", icon: CreditCard },
     { label: "Profile", href: "/dashboard/profile", icon: User },
   ];
 

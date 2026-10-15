@@ -157,6 +157,65 @@ export class NotificationService {
       targetRoute: `/dashboard/websites/${data.siteId}`,
     });
   }
+
+  public notifySubscriptionActivated(data: {
+    userId: string;
+    planName: string;
+    interval: string;
+  }): NotificationRecord {
+    return notificationRepository.createNotification({
+      userId: data.userId,
+      idempotencyKey: `sub_activated_${data.userId}_${data.planName}_${Date.now()}`,
+      type: "SYSTEM_UPDATE",
+      title: `${data.planName} Subscription Active`,
+      body: `Your ${data.planName} plan (${data.interval}) is now active. All included feature quotas and AI credits have been provisioned.`,
+      targetRoute: "/dashboard/billing",
+    });
+  }
+
+  public notifyPaymentReceived(data: {
+    userId: string;
+    invoiceNumber: string;
+    amountFormatted: string;
+  }): NotificationRecord {
+    return notificationRepository.createNotification({
+      userId: data.userId,
+      idempotencyKey: `payment_rcvd_${data.invoiceNumber}`,
+      type: "SYSTEM_UPDATE",
+      title: `Payment Received — ${data.amountFormatted}`,
+      body: `Thank you for your payment! Invoice ${data.invoiceNumber} has been marked paid and is available in your billing history.`,
+      targetRoute: "/dashboard/billing",
+    });
+  }
+
+  public notifyPaymentFailed(data: {
+    userId: string;
+    reason?: string;
+  }): NotificationRecord {
+    return notificationRepository.createNotification({
+      userId: data.userId,
+      idempotencyKey: `payment_failed_${data.userId}_${Date.now()}`,
+      type: "SECURITY_ALERT",
+      title: "Subscription Renewal Payment Failed",
+      body: data.reason || "We were unable to charge your payment method. Your account is in a grace period. Please update your billing details.",
+      targetRoute: "/dashboard/billing",
+    });
+  }
+
+  public notifyUsageWarning(data: {
+    userId: string;
+    percentUsed: number;
+    remainingCredits: number;
+  }): NotificationRecord {
+    return notificationRepository.createNotification({
+      userId: data.userId,
+      idempotencyKey: `usage_warn_${data.userId}_${data.percentUsed}`,
+      type: "SECURITY_ALERT",
+      title: `AI Usage Alert: ${data.percentUsed}% Credits Used`,
+      body: `You have ${data.remainingCredits} AI generation credits remaining for the current cycle.`,
+      targetRoute: "/dashboard/billing",
+    });
+  }
 }
 
 export const notificationService = new NotificationService();

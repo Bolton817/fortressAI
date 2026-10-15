@@ -27,6 +27,9 @@ model User {
   notifications    Notification[]
   auditEvents      AuditEvent[]
   domainOrders     DomainOrder[]
+  subscriptions    Subscription[]
+  invoices         Invoice[]
+  aiUsageCreditRecords AIUsageCreditRecord[]
 
   @@map("users")
 }
@@ -96,6 +99,7 @@ model Site {
   releases              Release[]
   domains               DomainMapping[]
   domainOrders          DomainOrder[]
+  aiUsageCreditRecords  AIUsageCreditRecord[]
 
   @@index([ownerUserId])
   @@map("sites")
@@ -334,3 +338,106 @@ model DomainOrder {
   @@index([userId])
   @@map("domain_orders")
 }
+
+model Subscription {
+  id                     String    @id @default(uuid())
+  userId                 String    @map("user_id")
+  planId                 String    @map("plan_id") // free, starter, pro, business
+  status                 String    @default("active") // trial, active, past_due, cancel_at_period_end, cancelled, expired
+  billingInterval        String    @default("monthly") @map("billing_interval") // monthly, annual
+  currency               String    @default("USD")
+  currentPeriodStart     DateTime  @map("current_period_start")
+  currentPeriodEnd       DateTime  @map("current_period_end")
+  cancelAtPeriodEnd      Boolean   @default(false) @map("cancel_at_period_end")
+  canceledAt             DateTime? @map("canceled_at")
+  providerSubscriptionId String?   @map("provider_subscription_id")
+  providerCustomerId     String?   @map("provider_customer_id")
+  paymentMethodType      String?   @map("payment_method_type") // card, mpesa
+  paymentMethodDetails   Json?     @map("payment_method_details")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
+
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invoices               Invoice[]
+
+  @@index([userId])
+  @@map("subscriptions")
+}
+
+model Invoice {
+  id                 String        @id @default(uuid())
+  invoiceNumber      String        @unique @map("invoice_number")
+  userId             String        @map("user_id")
+  subscriptionId     String?       @map("subscription_id")
+  amountMinorUnits   Int           @map("amount_minor_units")
+  currency           String        @default("USD")
+  status             String        @default("paid") // paid, open, void, uncollectible
+  lineItemsJson      Json          @map("line_items_json")
+  billingDetailsJson Json?         @map("billing_details_json")
+  providerPaymentId  String?       @map("provider_payment_id")
+  idempotencyKey     String?       @unique @map("idempotency_key")
+  paidAt             DateTime?     @map("paid_at")
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
+
+  user               User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription       Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@map("invoices")
+}
+
+model PaymentWebhookEvent {
+  id              String    @id @default(uuid())
+  provider        String    // intasend, stripe, mock
+  providerEventId String    @unique @map("provider_event_id")
+  eventType       String    @map("event_type")
+  payloadJson     Json      @map("payload_json")
+  signature       String?
+  status          String    @default("processed") // processed, ignored, failed
+  errorMessage    String?   @map("error_message")
+  processedAt     DateTime? @map("processed_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  @@map("payment_webhook_events")
+}
+
+model AIUsageCreditRecord {
+  id                     String   @id @default(uuid())
+  userId                 String   @map("user_id")
+  siteId                 String   @map("site_id")
+  jobId                  String   @map("job_id")
+  jobType                String   @map("job_type")
+  creditsDeducted        Int      @map("credits_deducted")
+  providerCostMinorUnits Int      @map("provider_cost_minor_units")
+  currency               String   @default("USD")
+  status                 String   @default("debited") // debited, refunded
+  idempotencyKey         String   @unique @map("idempotency_key")
+  createdAt              DateTime @default(now()) @map("created_at")
+
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  site                   Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([siteId])
+  @@map("ai_usage_credit_records")
+}
+
+model NewsletterConsent {
+  id                String    @id @default(uuid())
+  userId            String?   @map("user_id")
+  email             String    @unique
+  isSubscribed      Boolean   @default(true) @map("is_subscribed")
+  consentSource     String    @map("consent_source")
+  policyVersion     String    @map("policy_version")
+  ipAddress         String?   @map("ip_address")
+  consentedAt       DateTime? @map("consented_at")
+  unsubscribedAt    DateTime? @map("unsubscribed_at")
+  unsubscribeToken  String    @unique @map("unsubscribe_token")
+  suppressionReason String?   @map("suppression_reason")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  @@map("newsletter_consents")
+}
+

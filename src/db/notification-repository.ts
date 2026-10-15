@@ -123,6 +123,10 @@ export class NotificationRepository {
     return this.findForUser(userId, options);
   }
 
+  public listNotificationsForUser(userId: string, options?: { unreadOnly?: boolean; limit?: number }): NotificationRecord[] {
+    return this.findForUser(userId, options);
+  }
+
   public getNotificationsForUser(userId: string, options?: { unreadOnly?: boolean; limit?: number }): NotificationRecord[] {
     return this.findForUser(userId, options);
   }
@@ -136,6 +140,10 @@ export class NotificationRepository {
       }
     }
     return count;
+  }
+
+  public getUnreadCountForUser(userId: string): number {
+    return this.countUnreadForUser(userId);
   }
 
   public markAsRead(id: string, userId: string): boolean {
