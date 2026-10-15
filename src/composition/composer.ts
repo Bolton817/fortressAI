@@ -358,7 +358,7 @@ export function composeWebsite(
     createSection("shell.footer.minimal", {
       brandName: brief.name,
       copyrightText: `© ${new Date().getFullYear()} ${brief.name}.`,
-      links: navLinks,
+      links: navLinks.map((l) => ({ label: l.label, href: l.targetRoute, targetRoute: l.targetRoute })),
     }, cntOrder++),
   ];
 
@@ -391,7 +391,7 @@ export function composeWebsite(
     createSection("shell.footer.minimal", {
       brandName: brief.name,
       copyrightText: `© ${new Date().getFullYear()} ${brief.name}.`,
-      links: navLinks,
+      links: navLinks.map((l) => ({ label: l.label, href: l.targetRoute, targetRoute: l.targetRoute })),
     }, blgOrder++),
   ];
 

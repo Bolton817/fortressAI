@@ -53,11 +53,14 @@ export function FooterMinimalSection({
         </div>
 
         <nav aria-label="Footer Navigation" className="flex flex-wrap items-center gap-6">
-          {content.links?.map((link, idx) => (
-            <Link key={idx} href={link.href} className="hover:underline">
-              {link.label}
-            </Link>
-          ))}
+          {content.links?.map((link: any, idx: number) => {
+            const href = link.href || link.targetRoute || "#";
+            return (
+              <Link key={idx} href={href} className="hover:underline">
+                {link.label}
+              </Link>
+            );
+          })}
         </nav>
 
         <div className="text-xs">

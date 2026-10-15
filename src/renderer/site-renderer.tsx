@@ -34,11 +34,15 @@ function rewriteContentLinks(content: any, prefix?: string): any {
   if (clone.secondaryCtaRoute) clone.secondaryCtaRoute = prefixRoute(clone.secondaryCtaRoute, prefix);
 
   if (Array.isArray(clone.links)) {
-    clone.links = clone.links.map((l: any) => ({
-      ...l,
-      targetRoute: prefixRoute(l.targetRoute, prefix),
-      href: prefixRoute(l.href, prefix),
-    }));
+    clone.links = clone.links.map((l: any) => {
+      const rawTarget = l.href || l.targetRoute || l.route;
+      const prefixed = prefixRoute(rawTarget, prefix) || rawTarget || "#";
+      return {
+        ...l,
+        targetRoute: l.targetRoute ? (prefixRoute(l.targetRoute, prefix) || "#") : prefixed,
+        href: l.href ? (prefixRoute(l.href, prefix) || "#") : prefixed,
+      };
+    });
   }
 
   if (Array.isArray(clone.items)) {

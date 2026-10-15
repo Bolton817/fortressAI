@@ -78,7 +78,7 @@ export function FooterSection({
                   {col.links?.map((link, lIdx) => (
                     <li key={lIdx}>
                       <Link
-                        href={link.href}
+                        href={link.href || (link as any).targetRoute || "#"}
                         className="text-sm transition-colors hover:opacity-80"
                         style={{ color: "var(--theme-muted, #586766)" }}
                       >

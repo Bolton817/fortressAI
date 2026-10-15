@@ -128,7 +128,7 @@ export function BlogIndexSection({
                     color: "var(--theme-text, #1d2a2a)",
                   }}
                 >
-                  <Link href={`/blog/${art.slug}`} className="hover:underline">
+                  <Link href={(art as any).route || (art.slug ? `/blog/${art.slug}` : "#")} className="hover:underline">
                     {art.title}
                   </Link>
                 </h3>
@@ -140,7 +140,7 @@ export function BlogIndexSection({
 
               <div className="p-8 pt-0">
                 <Link
-                  href={`/blog/${art.slug}`}
+                  href={(art as any).route || (art.slug ? `/blog/${art.slug}` : "#")}
                   className="inline-flex items-center gap-1.5 text-sm font-semibold hover:opacity-85"
                   style={{ color: "var(--theme-primary, #174a50)" }}
                 >
