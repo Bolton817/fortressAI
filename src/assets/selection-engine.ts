@@ -133,5 +133,6 @@ export function buildCloudinaryUrl(
   if (publicId.startsWith("http")) {
     return `${publicId}&w=${width}&q=${quality === "auto" ? 80 : quality}`;
   }
-  return `https://res.cloudinary.com/megascript/image/upload/c_${crop},w_${width},f_auto,q_${quality}/${publicId}`;
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME || "nh8mqfdn";
+  return `https://res.cloudinary.com/${cloudName}/image/upload/c_${crop},w_${width},f_auto,q_${quality}/${publicId}`;
 }
